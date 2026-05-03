@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>計算機</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f0efea;
+      font-family: 'DM Mono', 'Courier New', monospace;
+    }
+
+    .calc {
+      background: #ffffff;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      width: 300px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.10);
+    }
+
+    .display {
+      background: #f5f4ef;
+      padding: 1.5rem 1.25rem 1rem;
+      border-bottom: 1px solid #e8e7e2;
+    }
+
+    .display .expr {
+      font-size: 13px;
+      color: #999;
+      min-height: 18px;
+      text-align: right;
+      letter-spacing: 0.03em;
+      margin-bottom: 6px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .display .main {
+      font-size: 36px;
+      font-weight: 500;
+      color: #1a1a1a;
+      text-align: right;
+      letter-spacing: -0.02em;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .btn {
+      background: transparent;
+      border: none;
+      border-right: 1px solid #ebebeb;
+      border-bottom: 1px solid #ebebeb;
+      padding: 0;
+      height: 64px;
+      font-size: 16px;
+      font-weight: 500;
+      font-family: 'DM Mono', 'Courier New', monospace;
+      color: #1a1a1a;
+      cursor: pointer;
+      transition: background 0.1s;
+      outline: none;
+    }
+
+    .btn:nth-child(4n) { border-right: none; }
+    .btn:nth-last-child(-n+4) { border-bottom: none; }
+    .btn:hover { background: #f5f4ef; }
+    .btn:active { background: #eae9e4; transform: scale(0.96); }
+
+    .btn.op {
+      color: #185FA5;
+      background: #f0f5fb;
+      font-size: 20px;
+    }
+    .btn.op:hover { background: #ddeaf8; }
+
+    .btn.eq {
+      background: #185FA5;
+      color: #fff;
+      font-size: 22px;
+    }
+    .btn.eq:hover { background: #0C447C; }
+
+    .btn.fn {
+      color: #666;
+      font-size: 14px;
+      background: #f5f4ef;
+    }
+    .btn.fn:hover { background: #eae9e4; }
+
+    .btn.zero {
+      grid-column: span 2;
+      text-align: left;
+      padding-left: 1.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="calc">
+    <div class="display">
+      <div class="expr" id="expr"></div>
+      <div class="main" id="main">0</div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <script>
+    const buttons = [
+      { label: 'AC',  cls: 'fn',  action: 'clear' },
+      { label: '+/-', cls: 'fn',  action: 'negate' },
+      { label: '%',   cls: 'fn',  action: 'percent' },
+      { label: '÷',   cls: 'op',  action: 'op', val: '/' },
+      { label: '7',                action: 'num', val: '7' },
+      { label: '8',                action: 'num', val: '8' },
+      { label: '9',                action: 'num', val: '9' },
+      { label: '×',   cls: 'op',  action: 'op', val: '*' },
+      { label: '4',                action: 'num', val: '4' },
+      { label: '5',                action: 'num', val: '5' },
+      { label: '6',                action: 'num', val: '6' },
+      { label: '−',   cls: 'op',  action: 'op', val: '-' },
+      { label: '1',                action: 'num', val: '1' },
+      { label: '2',                action: 'num', val: '2' },
+      { label: '3',                action: 'num', val: '3' },
+      { label: '+',   cls: 'op',  action: 'op', val: '+' },
+      { label: '0',   cls: 'zero', action: 'num', val: '0' },
+      { label: '.',                action: 'dot' },
+      { label: '=',   cls: 'eq',  action: 'eq' },
+    ];
+
+    const grid = document.getElementById('grid');
+    const mainEl = document.getElementById('main');
+    const exprEl = document.getElementById('expr');
+
+    let state = { cur: '0', prev: null, op: null, reset: false };
+
+    function fmt(n) {
+      let s = parseFloat(n).toPrecision(10).replace(/\.?0+$/, '');
+      if (s.length > 12) s = parseFloat(n).toExponential(4);
+      return s;
+    }
+
+    function setMain(v) { mainEl.textContent = fmt(v); }
+
+    function press(b) {
+      if (b.action === 'clear') {
+        state = { cur: '0', prev: null, op: null, reset: false };
+        exprEl.textContent = '';
+        mainEl.textContent = '0';
+
+      } else if (b.action === 'negate') {
+        state.cur = String(-parseFloat(state.cur));
+        setMain(state.cur);
+
+      } else if (b.action === 'percent') {
+        state.cur = String(parseFloat(state.cur) / 100);
+        setMain(state.cur);
+
+      } else if (b.action === 'num') {
+        if (state.reset) { state.cur = b.val; state.reset = false; }
+        else state.cur = state.cur === '0' ? b.val : state.cur + b.val;
+        if (state.cur.length > 12) return;
+        mainEl.textContent = state.cur;
+
+      } else if (b.action === 'dot') {
+        if (state.reset) { state.cur = '0.'; state.reset = false; }
+        else if (!state.cur.includes('.')) state.cur += '.';
+        mainEl.textContent = state.cur;
+
+      } else if (b.action === 'op') {
+        if (state.op && !state.reset) compute();
+        state.prev = parseFloat(state.cur);
+        state.op = b.val;
+        state.reset = true;
+        const sym = { '/': '÷', '*': '×', '-': '−', '+': '+' }[b.val];
+        exprEl.textContent = fmt(state.prev) + ' ' + sym;
+
+      } else if (b.action === 'eq') {
+        if (!state.op) return;
+        const sym = { '/': '÷', '*': '×', '-': '−', '+': '+' }[state.op];
+        exprEl.textContent = fmt(state.prev) + ' ' + sym + ' ' + fmt(state.cur) + ' =';
+        compute();
+        state.op = null;
+      }
+    }
+
+    function compute() {
+      const a = state.prev, b = parseFloat(state.cur);
+      let r;
+      if (state.op === '+') r = a + b;
+      else if (state.op === '-') r = a - b;
+      else if (state.op === '*') r = a * b;
+      else if (state.op === '/') r = b === 0 ? NaN : a / b;
+      if (isNaN(r)) {
+        mainEl.textContent = '錯誤';
+        state = { cur: '0', prev: null, op: null, reset: false };
+        return;
+      }
+      state.cur = String(r);
+      state.reset = true;
+      setMain(state.cur);
+    }
+
+    buttons.forEach(b => {
+      const btn = document.createElement('button');
+      btn.className = 'btn' + (b.cls ? ' ' + b.cls : '');
+      btn.textContent = b.label;
+      btn.onclick = () => press(b);
+      grid.appendChild(btn);
+    });
+
+    // 鍵盤支援
+    document.addEventListener('keydown', e => {
+      const map = {
+        '0':'0','1':'1','2':'2','3':'3','4':'4',
+        '5':'5','6':'6','7':'7','8':'8','9':'9',
+        '+':'+', '-':'-', '*':'*', '/':'/',
+        'Enter':'=', '=':'=', 'Backspace':'AC',
+        'Escape':'AC', '.':'.', ',':'.'
+      };
+      const key = map[e.key];
+      if (!key) return;
+      e.preventDefault();
+      const b = buttons.find(btn =>
+        btn.val === key || btn.label === key ||
+        (key === '=' && btn.action === 'eq') ||
+        (key === 'AC' && btn.action === 'clear')
+      );
+      if (b) press(b);
+    });
+  </script>
+</body>
+</html>
