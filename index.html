@@ -81,11 +81,20 @@
     .btn:active { background: #eae9e4; transform: scale(0.96); }
 
     .btn.op {
-      color: #185FA5;
-      background: #f0f5fb;
       font-size: 20px;
     }
-    .btn.op:hover { background: #ddeaf8; }
+    .btn.op-div  { color: #185FA5; background: #e6f1fb; }
+    .btn.op-mul  { color: #0F6E56; background: #e1f5ee; }
+    .btn.op-sub  { color: #854F0B; background: #faeeda; }
+    .btn.op-add  { color: #993C1D; background: #faece7; }
+    .btn.op-div:hover { background: #c8dff5; }
+    .btn.op-mul:hover { background: #b8e8d8; }
+    .btn.op-sub:hover { background: #f5d99a; }
+    .btn.op-add:hover { background: #f5c4b3; }
+    .btn.op-div.active { background: #185FA5; color: #fff; }
+    .btn.op-mul.active { background: #0F6E56; color: #fff; }
+    .btn.op-sub.active { background: #854F0B; color: #fff; }
+    .btn.op-add.active { background: #993C1D; color: #fff; }
 
     .btn.eq {
       background: #185FA5;
@@ -122,19 +131,19 @@
       { label: 'AC',  cls: 'fn',  action: 'clear' },
       { label: '+/-', cls: 'fn',  action: 'negate' },
       { label: '%',   cls: 'fn',  action: 'percent' },
-      { label: '÷',   cls: 'op',  action: 'op', val: '/' },
+      { label: '÷',   cls: 'op op-div',  action: 'op', val: '/' },
       { label: '7',                action: 'num', val: '7' },
       { label: '8',                action: 'num', val: '8' },
       { label: '9',                action: 'num', val: '9' },
-      { label: '×',   cls: 'op',  action: 'op', val: '*' },
+      { label: '×',   cls: 'op op-mul',  action: 'op', val: '*' },
       { label: '4',                action: 'num', val: '4' },
       { label: '5',                action: 'num', val: '5' },
       { label: '6',                action: 'num', val: '6' },
-      { label: '−',   cls: 'op',  action: 'op', val: '-' },
+      { label: '−',   cls: 'op op-sub',  action: 'op', val: '-' },
       { label: '1',                action: 'num', val: '1' },
       { label: '2',                action: 'num', val: '2' },
       { label: '3',                action: 'num', val: '3' },
-      { label: '+',   cls: 'op',  action: 'op', val: '+' },
+      { label: '+',   cls: 'op op-add',  action: 'op', val: '+' },
       { label: '0',   cls: 'zero', action: 'num', val: '0' },
       { label: '.',                action: 'dot' },
       { label: '=',   cls: 'eq',  action: 'eq' },
@@ -154,11 +163,16 @@
 
     function setMain(v) { mainEl.textContent = fmt(v); }
 
+    function clearActiveOp() {
+      document.querySelectorAll('.btn.op').forEach(b => b.classList.remove('active'));
+    }
+
     function press(b) {
       if (b.action === 'clear') {
         state = { cur: '0', prev: null, op: null, reset: false };
         exprEl.textContent = '';
         mainEl.textContent = '0';
+        clearActiveOp();
 
       } else if (b.action === 'negate') {
         state.cur = String(-parseFloat(state.cur));
@@ -169,6 +183,7 @@
         setMain(state.cur);
 
       } else if (b.action === 'num') {
+        clearActiveOp();
         if (state.reset) { state.cur = b.val; state.reset = false; }
         else state.cur = state.cur === '0' ? b.val : state.cur + b.val;
         if (state.cur.length > 12) return;
@@ -186,6 +201,9 @@
         state.reset = true;
         const sym = { '/': '÷', '*': '×', '-': '−', '+': '+' }[b.val];
         exprEl.textContent = fmt(state.prev) + ' ' + sym;
+        clearActiveOp();
+        const activeBtn = [...document.querySelectorAll('.btn.op')].find(el => el.textContent === b.label);
+        if (activeBtn) activeBtn.classList.add('active');
 
       } else if (b.action === 'eq') {
         if (!state.op) return;
@@ -193,6 +211,7 @@
         exprEl.textContent = fmt(state.prev) + ' ' + sym + ' ' + fmt(state.cur) + ' =';
         compute();
         state.op = null;
+        clearActiveOp();
       }
     }
 
